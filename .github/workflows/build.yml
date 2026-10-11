@@ -18,7 +18,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm install
-      - run: mkdir -p www && cp index.html www/
+      - run: mkdir -p www && f=$(ls app-v*.html 2>/dev/null | sort -V | tail -1); cp "${f:-index.html}" www/index.html
       - run: npx cap add android
       - run: npx cap sync android
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
