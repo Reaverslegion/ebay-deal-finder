@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Deal Finder</title>
+<style>
+:root{color-scheme:light;--bg:#fff;--fg:#111;--card:#f1f3f5;--ac:#0b6bcb;--bad:#c62828;--good:#2e7d32}
+:root[data-theme=dark]{color-scheme:dark;--bg:#121212;--fg:#eee;--card:#1e1e1e;--ac:#5aa9ff;--bad:#ef9a9a;--good:#81c784}
+body{margin:0;padding:12px;font-family:sans-serif;background:var(--bg);color:var(--fg)}
+h1{font-size:20px;margin:4px 0}input,select,textarea,button{width:100%;box-sizing:border-box;padding:10px;margin:4px 0;font-size:16px;border-radius:8px;border:1px solid #888;background:var(--card);color:var(--fg);font-family:inherit}
+button{background:var(--ac);color:#fff;border:0}button.s{background:#666}.card{background:var(--card);padding:10px;border-radius:8px;margin:8px 0}
+small{opacity:.8}.bad{color:var(--bad)}.good{color:var(--good)}.row{display:flex;gap:6px}.row>*{flex:1}
+</style></head><body>
+<h1>Deal Finder</h1>
+<div class="card" id="sum"></div>
+<div class="card"><b id="ft">Add item</b>
+<input id="n" placeholder="Item name">
+<div class="row"><input id="cost" type="number" step="0.01" placeholder="Purchase cost"><input id="post" type="number" step="0.01" placeholder="Est. postage"></div>
+<div class="row"><input id="est" type="number" step="0.01" placeholder="Est. sale price"><input id="fee" type="number" step="0.01" placeholder="Fee %"></div>
+<small>Status of THIS item:</small><select id="st"><option>Planned</option><option>Bought</option><option>Awaiting listing</option><option>Listed</option><option>Sold</option><option>Unsold</option><option>Returned</option></select>
+<small>Fill in below only when sold (actual results):</small>
+<div class="row"><input id="sp" type="number" step="0.01" placeholder="Actual sale price"><input id="sd" type="date"></div>
+<div class="row"><input id="ap" type="number" step="0.01" placeholder="Actual postage paid"><input id="af" type="number" step="0.01" placeholder="Actual fees paid"></div>
+<textarea id="nt" rows="2" placeholder="Notes"></textarea>
+<button onclick="saveItem()">Save item</button><button class="s" id="cx" style="display:none" onclick="clearForm()">Cancel edit</button></div>
+<div class="card"><b>Your items</b><br><small>Search and filter (this only changes what is shown):</small><input id="q" placeholder="Search items" oninput="render()"><select id="fs" onchange="render()"><option value="">Show all statuses</option><option>Planned</option><option>Bought</option><option>Awaiting listing</option><option>Listed</option><option>Sold</option><option>Unsold</option><option>Returned</option></select></div>
+<div id="list"></div>
+<div class="card"><b>Settings</b>
+<small>Default fee % for new items</small><input id="dfee" type="number" step="0.01" onchange="setS()">
+<small>Profit target (ROI %). Items below it are flagged.</small><input id="troi" type="number" step="1" onchange="setS()">
+<small>Theme</small><select id="th" onchange="setS()"><option value="auto">Match phone</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+<div class="card"><b>Backup</b><br><small>A backup file saves your items and settings. Keep a copy somewhere safe such as Google Drive. Importing REPLACES everything currently in the app.</small>
+<button onclick="exp()">Export Backup</button>
+<input type="file" id="f" accept=".json" onchange="imp(this)"></div>
+<script>
+const K='dealfinder_items',KS='dealfinder_settings';let editId=null;
+const $=i=>document.getElementById(i);
+function load(){try{return JSON.parse(localStorage.getItem(K))||[]}catch(e){return[]}}
+function save(a){localStorage.setItem(K,JSON.stringify(a))}
+function loadS(){try{return Object.assign({dfee:0,troi:30,theme:'auto'},JSON.parse(localStorage.getItem(KS))||{})}catch(e){return{dfee:0,troi:30,theme:'auto'}}}
+function setS(){const s={dfee:parseFloat($('dfee').value)||0,troi:parseFloat($('troi').value)||0,theme:$('th').value};localStorage.setItem(KS,JSON.stringify(s));theme();render()}
+function theme(){const s=loadS();const dark=s.theme==='dark'||(s.theme==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light'}
+const esc=t=>String(t||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const v=id=>parseFloat($(id).value)||0;
+function clearForm(){editId=null;['n','cost','post','est','sp','sd','ap','af','nt'].forEach(i=>$(i).value='');$('fee').value=loadS().dfee||'';$('st').value='Planned';$('ft').textContent='Add item';$('cx').style.display='none'}
+function saveItem(){const n=$('n').value.trim();if(!n)return alert('Enter an item name');
+const a=load();const o={name:n,cost:v('cost'),post:v('post'),est:v('est'),fee:v('fee'),status:$('st').value,sp:v('sp'),sd:$('sd').value,ap:v('ap'),af:v('af'),notes:$('nt').value.trim()};
+if(editId){const i=a.findIndex(x=>x.id===editId);if(i>=0)a[i]=Object.assign(a[i],o)}else{o.id=Date.now();o.date=new Date().toISOString().slice(0,10);a.push(o)}
+save(a);clearForm();render()}
+function edit(i){const x=load().find(y=>y.id===i);if(!x)return;editId=i;
+$('n').value=x.name;$('cost').value=x.cost||'';$('post').value=x.post||'';$('est').value=x.est||'';$('fee').value=x.fee||'';$('st').value=x.status;$('sp').value=x.sp||'';$('sd').value=x.sd||'';$('ap').value=x.ap||'';$('af').value=x.af||'';$('nt').value=x.notes||'';
+$('ft').textContent='Edit item';$('cx').style.display='block';scrollTo(0,0)}
+function del(i){if(confirm('Delete this item?')){save(load().filter(x=>x.id!==i));render()}}
+const estP=x=>x.est-x.cost-x.post-x.est*x.fee/100;
+const hasActual=x=>x.status==='Sold'&&x.sp>0;
+const actP=x=>x.sp-x.cost-x.ap-x.af;
+function render(){const s=loadS(),all=load(),q=$('q').value.toLowerCase(),fs=$('fs').value;
+let aProfit=0,aCount=0,eProfit=0,stock=0,sc=0;
+all.forEach(x=>{if(hasActual(x)){aProfit+=actP(x);aCount++}else if(x.status!=='Sold'&&x.status!=='Returned'&&x.status!=='Planned'){eProfit+=estP(x);stock+=x.cost;sc++}});
+$('sum').innerHTML=`<b>Summary</b><br>Actual profit from ${aCount} sold item(s): <b>${aProfit.toFixed(2)}</b><br><small>Estimated profit still to come from ${sc} bought/listed item(s): ${eProfit.toFixed(2)} (estimate only). Money tied up in stock: ${stock.toFixed(2)}</small>`;
+const f=all.filter(x=>(!fs||x.status===fs)&&(!q||(x.name+' '+(x.notes||'')).toLowerCase().includes(q)));
+$('list').innerHTML=f.map(x=>{const ep=estP(x),base=x.cost+x.post,er=base>0?ep/base*100:0;
+const flag=er<s.troi?`<span class="bad">Below ${s.troi}% target</span>`:`<span class="good">Meets ${s.troi}% target</span>`;
+let h=`<div class="card"><b>${esc(x.name)}</b> <small>${esc(x.status)} · added ${esc(x.date)}</small><br>Estimated profit: ${ep.toFixed(2)} (ROI ${er.toFixed(0)}%) ${flag}<br><small>Estimate only, not an actual result</small>`;
+if(hasActual(x)){const ap=actP(x),ar=x.cost>0?ap/(x.cost+x.ap)*100:0;h+=`<br>Actual profit: <b>${ap.toFixed(2)}</b> (ROI ${ar.toFixed(0)}%) <small>${esc(x.sd)}</small>`}
+if(x.notes)h+=`<br><small>${esc(x.notes)}</small>`;
+return h+`<div class="row"><button onclick="edit(${x.id})">Edit</button><button class="s" onclick="del(${x.id})">Delete</button></div></div>`}).join('')||'<div class="card"><small>No items to show.</small></div>'}
+async function exp(){const json=JSON.stringify({app:'dealfinder',version:3,items:load(),settings:loadS()});const name='deal-finder-backup-'+new Date().toISOString().slice(0,10)+'.json';
+const C=window.Capacitor;
+if(C&&C.isNativePlatform&&C.isNativePlatform()){try{const FS=C.registerPlugin('Filesystem'),SH=C.registerPlugin('Share');
+const r=await FS.writeFile({path:name,data:json,directory:'CACHE',encoding:'utf8'});
+await SH.share({title:'Deal Finder backup',files:[r.uri],dialogTitle:'Save your backup (for example to Google Drive)'});return}
+catch(e){if(/cancel/i.test(String(e&&e.message||e)))return;alert('Could not share the backup: '+(e&&e.message||e))}}
+const b=new Blob([json],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click()}
+function imp(el){const f=el.files[0];if(!f)return;if(!confirm('This will REPLACE all items and settings in the app with the backup. Continue?')){el.value='';return}
+const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);const items=Array.isArray(d)?d:d.items;if(!Array.isArray(items))throw 0;save(items);if(d.settings)localStorage.setItem(KS,JSON.stringify(d.settings));init();alert('Backup restored')}catch(e){alert('That file is not a valid backup')}el.value=''};r.readAsText(f)}
+function init(){const s=loadS();$('dfee').value=s.dfee;$('troi').value=s.troi;$('th').value=s.theme;theme();clearForm();render()}
+init();
+</script></body></html>
