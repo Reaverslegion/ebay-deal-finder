@@ -6,6 +6,14 @@ on:
 permissions:
   contents: write
 jobs:
+  buiname: Build APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
   build:
     runs-on: ubuntu-latest
     steps:
@@ -18,6 +26,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm install
+      - run: npm install @capacitor/share@7 @capacitor/filesystem@7
       - run: mkdir -p www && f=$(ls app-v*.html 2>/dev/null | sort -V | tail -1); cp "${f:-index.html}" www/index.html
       - run: npx cap add android
       - run: npx cap sync android
