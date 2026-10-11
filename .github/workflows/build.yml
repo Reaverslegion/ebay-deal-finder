@@ -21,6 +21,7 @@ jobs:
       - run: mkdir -p www && f=$(ls app-v*.html 2>/dev/null | sort -V | tail -1); cp "${f:-index.html}" www/index.html
       - run: npx cap add android
       - run: npx cap sync android
+      - run: mkdir -p ~/.android && base64 -d deal-finder-key.txt > ~/.android/debug.keystore
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - name: Publish APK
         env:
